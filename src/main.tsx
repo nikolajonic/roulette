@@ -14,7 +14,6 @@ import RaceTrackPanel from "./game/RaceTrackPanel";
 const SPIN_EVERY_MS = 15_000;
 const SPIN_ANIM_MS = 5_200;
 const RESULT_SHOW_MS = 3_000;
-
 const RIGHT_RAIL_WIDTH = 720;
 const GRID_GAP = 24;
 const WHEEL_SHIFT_X = RIGHT_RAIL_WIDTH / 2 + GRID_GAP / 2 + 25;
@@ -28,31 +27,21 @@ function OnlineRouletteGame() {
   const [payout, setPayout] = useState<number>(0);
   const [isSpinning, setIsSpinning] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
-
   const [nextSpinAt, setNextSpinAt] = useState<number | null>(null);
   const [remainingMs, setRemainingMs] = useState(0);
-
   const [chip, setChip] = useState<number | null>(100);
   const [canRepeat, setCanRepeat] = useState(false);
 
-  useEffect(() => {
-    if (winningNumber != null) {
-      resultRef.current?.updateDisplay(winningNumber, payout);
-    }
-  }, [winningNumber, payout]);
+  // responsive width
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
   useEffect(() => {
-    const id = window.setInterval(() => {
-      if (!nextSpinAt) {
-        setRemainingMs(0);
-        return;
-      }
-      const left = Math.max(0, nextSpinAt - Date.now());
-      setRemainingMs(left);
-    }, 200);
-    return () => window.clearInterval(id);
-  }, [nextSpinAt]);
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
+  // Spin cycle
   useSpinCycle({
     intervalMs: SPIN_EVERY_MS,
     animMs: SPIN_ANIM_MS,
@@ -74,7 +63,26 @@ function OnlineRouletteGame() {
     onNextSpinAtChange: setNextSpinAt,
   });
 
-  const prevOverlay = React.useRef(showOverlay);
+  useEffect(() => {
+    if (winningNumber != null) {
+      resultRef.current?.updateDisplay(winningNumber, payout);
+    }
+  }, [winningNumber, payout]);
+
+  // countdown
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (!nextSpinAt) {
+        setRemainingMs(0);
+        return;
+      }
+      const left = Math.max(0, nextSpinAt - Date.now());
+      setRemainingMs(left);
+    }, 200);
+    return () => window.clearInterval(id);
+  }, [nextSpinAt]);
+
+  const prevOverlay = useRef(showOverlay);
   useEffect(() => {
     if (prevOverlay.current && !showOverlay) {
       const had = betPanelRef.current?.clearBets() ?? false;
@@ -83,7 +91,7 @@ function OnlineRouletteGame() {
     prevOverlay.current = showOverlay;
   }, [showOverlay]);
 
-  // ===== Styles =====
+  // ======== Styles ========
   const pageWrap: React.CSSProperties = {
     minHeight: "90vh",
     padding: 20,
@@ -102,45 +110,52 @@ function OnlineRouletteGame() {
     pointerEvents: showOverlay ? "none" : "auto",
   };
 
+  const isMobile = windowWidth <= 768;
+
   const grid: React.CSSProperties = {
     display: "grid",
-    gridTemplateColumns: "420px 1fr", // left: wheel, right: racetrack+panel
     gap: GRID_GAP,
     alignItems: "start",
     justifyContent: "center",
     margin: "0 auto",
     maxWidth: 1220,
     width: "100%",
+    gridTemplateColumns: isMobile ? "1fr" : "420px 1fr",
   };
 
-  // LEFT: wheel box
+  const wheelSize = isMobile ? windowWidth * 0.9 : 400;
+
   const wheelBox: React.CSSProperties = {
-    width: 400,
-    height: 400,
+    width: wheelSize,
+    height: wheelSize,
     margin: "0 auto",
-    transform: isSpinning
-      ? `translate3d(${WHEEL_SHIFT_X}px, 90px, 0) scale(1.35)`
-      : "translate3d(0, 0, 0) scale(1)",
+    transform:
+      isMobile && isSpinning
+        ? "translate3d(0,130px,0) scale(1)" // 👈 always static on mobile
+        : isSpinning
+        ? `translate3d(${WHEEL_SHIFT_X}px, 90px, 0) scale(1.35)`
+        : "translate3d(0,0,0) scale(1)",
     transition:
       "transform 2000ms cubic-bezier(0.22, 1, 0.36, 1), filter 2000ms ease",
     filter: isSpinning ? "drop-shadow(0 20px 60px rgba(0,0,0,0.55))" : "none",
     willChange: "transform, filter",
   };
 
-  // RIGHT: race track + chip tray + bet panel (slides out to the right)
   const rightRail: React.CSSProperties = {
-    width: RIGHT_RAIL_WIDTH,
-    maxWidth: "100%",
-    justifySelf: "start",
+    width: isMobile ? "90%" : RIGHT_RAIL_WIDTH,
     display: "flex",
     flexDirection: "column",
-    alignItems: "center", // centers ChipTray & BetPanel with RaceTrack
-    transform: isSpinning ? "translate3d(640px, 0, 0)" : "translate3d(0,0,0)",
+    alignItems: "center",
+    margin: isMobile ? "20px auto 0" : "0 0 0 0",
+    transform: isSpinning
+      ? isMobile
+        ? "translate3d(0,0,0)"
+        : "translate3d(640px,0,0)"
+      : "translate3d(0,0,0)",
     opacity: isSpinning ? 0 : 1,
     transition:
       "transform 2000ms cubic-bezier(0.22, 1, 0.36, 1), opacity 1800ms ease",
     willChange: "transform, opacity",
-    marginRight: 50,
   };
 
   const chipTrayStyle: React.CSSProperties = {
@@ -155,7 +170,6 @@ function OnlineRouletteGame() {
     marginTop: 16,
   };
 
-  // Timer
   const progress = nextSpinAt
     ? Math.min(1, 1 - remainingMs / SPIN_EVERY_MS)
     : 0;
@@ -169,18 +183,17 @@ function OnlineRouletteGame() {
     maxWidth: 820,
     width: "100%",
     padding: "0 12px",
+    flexWrap: isMobile ? "wrap" : "nowrap",
   };
 
   const pill: React.CSSProperties = {
     padding: "6px 12px",
     borderRadius: 999,
     background: "rgba(255,255,255,0.1)",
-    fontSize: 14,
+    fontSize: isMobile ? 12 : 14,
     letterSpacing: 0.2,
     textAlign: "center",
-    fontVariantNumeric: "tabular-nums",
-    fontFeatureSettings: '"tnum" 1, "lnum" 1',
-    minWidth: 180,
+    minWidth: isMobile ? "60%" : 180,
   };
 
   const bar: React.CSSProperties = {
@@ -224,28 +237,29 @@ function OnlineRouletteGame() {
           </div>
         </div>
 
-        {/* two-column layout */}
+        {/* main grid */}
         <div style={grid}>
           {/* LEFT — Wheel */}
           <div style={{ display: "grid", placeItems: "center" }}>
             <div style={wheelBox}>
-              <WheelHost ref={wheelRef} width={400} height={400} />
+              <WheelHost ref={wheelRef} width={wheelSize} height={wheelSize} />
             </div>
           </div>
 
-          {/* RIGHT — RaceTrack + ChipTray + BetPanel (slides out) */}
+          {/* RIGHT — panels */}
           <div style={rightRail}>
-            <RaceTrackPanel
-              chip={chip ?? 100}
-              disabled={isSpinning || showOverlay}
-              onPlace={(bets) =>
-                betPanelRef.current?.placeManyFromOutside?.(bets)
-              }
-              onHoverNumbers={(nums) => betPanelRef.current?.highlight(nums)}
-              width={RIGHT_RAIL_WIDTH}
-              height={260}
-            />
-
+            {!isMobile && (
+              <RaceTrackPanel
+                chip={chip ?? 100}
+                disabled={isSpinning || showOverlay}
+                onPlace={(bets) =>
+                  betPanelRef.current?.placeManyFromOutside?.(bets)
+                }
+                onHoverNumbers={(nums) => betPanelRef.current?.highlight(nums)}
+                width={isMobile ? windowWidth * 0.85 : RIGHT_RAIL_WIDTH}
+                height={260}
+              />
+            )}
             <div style={chipTrayStyle}>
               <ChipTray
                 selected={chip}
