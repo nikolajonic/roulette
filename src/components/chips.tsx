@@ -1,5 +1,5 @@
 import React from "react";
-import RepeatSVG from "../../public/assets/svg/repeat-svg";
+import RepeatSVG from "../svg/repeat-svg";
 
 type Props = {
   selected?: number | null;
@@ -16,10 +16,10 @@ const CHIPS: Array<{
   color: "green" | "blue" | "red" | "yellow";
   src: string;
 }> = [
-  { value: 50, color: "green", src: "/assets/chips/chip_green.png" },
-  { value: 100, color: "blue", src: "/assets/chips/chip_blue.png" },
-  { value: 200, color: "red", src: "/assets/chips/chip_red.png" },
-  { value: 500, color: "yellow", src: "/assets/chips/chip_yellow.png" },
+  { value: 50, color: "green", src: "assets/chips/chip_green.png" },
+  { value: 100, color: "blue", src: "assets/chips/chip_blue.png" },
+  { value: 200, color: "red", src: "assets/chips/chip_red.png" },
+  { value: 500, color: "yellow", src: "assets/chips/chip_yellow.png" },
 ];
 
 export default function ChipTray({

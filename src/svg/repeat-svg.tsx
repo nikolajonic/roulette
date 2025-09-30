@@ -1,12 +1,9 @@
-import * as React from "react";
-
-const RepeatSVG = (props) => (
+const RepeatSVG = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width={30}
     height={30}
     viewBox="0 0 225 225"
-    {...props}
   >
     <path
       fill="#fff"

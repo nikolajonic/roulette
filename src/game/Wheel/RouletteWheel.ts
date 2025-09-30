@@ -75,7 +75,9 @@ export default class RouletteWheel extends PIXI.Container {
   }
 
   private async initWheel() {
-    const texture = await PIXI.Assets.load("/assets/roulette-background.jpg");
+    const texture = await PIXI.Assets.load(
+      import.meta.env.BASE_URL + "assets/roulette-background.jpg"
+    );
     const background = new PIXI.Sprite(texture);
     background.anchor.set(0.5);
     background.width = RADIUS * 2;

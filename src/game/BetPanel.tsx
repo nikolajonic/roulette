@@ -24,10 +24,10 @@ const cellSize = 48;
 const GAP = 4;
 
 const CHIP_SRC = {
-  green: "/assets/chips/chip_green.png",
-  blue: "/assets/chips/chip_blue.png",
-  red: "/assets/chips/chip_red.png",
-  yellow: "/assets/chips/chip_yellow.png",
+  green: "assets/chips/chip_green.png",
+  blue: "assets/chips/chip_blue.png",
+  red: "assets/chips/chip_red.png",
+  yellow: "assets/chips/chip_yellow.png",
 };
 
 const chipSrcForAmount = (amount: number) => {
