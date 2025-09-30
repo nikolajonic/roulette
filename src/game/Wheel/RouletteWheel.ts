@@ -9,6 +9,13 @@ const wheelOffset = -Math.PI / 2 + rotationAdjust;
 const extraTurns = 8;
 const spinSeconds = 5;
 
+// 🔽 Mobile scale
+const MOBILE_SCALE = 0.8;
+const isMobile = typeof window !== "undefined" && window.innerWidth <= 868;
+
+const BASE_RADIUS = RADIUS;
+const EFFECTIVE_RADIUS = isMobile ? BASE_RADIUS * MOBILE_SCALE : BASE_RADIUS;
+
 export default class RouletteWheel extends PIXI.Container {
   private wheelContainer = new PIXI.Container();
   private overlayContainer = new PIXI.Container();
@@ -18,9 +25,9 @@ export default class RouletteWheel extends PIXI.Container {
   private resultNumber = 0;
   private ballAngleRad = 0;
 
-  private ballTrackRadius = RADIUS - 27;
+  private ballTrackRadius = EFFECTIVE_RADIUS - 27;
 
-  private dropDepthPx = 75;
+  private dropDepthPx = isMobile ? 50 : 75;
   private dropStartRatio = 0.3;
 
   private overlayReverse = true;
@@ -80,8 +87,8 @@ export default class RouletteWheel extends PIXI.Container {
     );
     const background = new PIXI.Sprite(texture);
     background.anchor.set(0.5);
-    background.width = RADIUS * 2;
-    background.height = RADIUS * 2;
+    background.width = EFFECTIVE_RADIUS * 2;
+    background.height = EFFECTIVE_RADIUS * 2;
     background.zIndex = 0;
 
     this.wheelContainer.addChild(background);
@@ -125,14 +132,20 @@ export default class RouletteWheel extends PIXI.Container {
       sector.lineStyle(1, 0xff0000);
       sector.beginFill(0x000000, 0);
       sector.moveTo(0, 0);
-      sector.lineTo(RADIUS * Math.cos(start), RADIUS * Math.sin(start));
-      sector.lineTo(RADIUS * Math.cos(end), RADIUS * Math.sin(end));
+      sector.lineTo(
+        EFFECTIVE_RADIUS * Math.cos(start),
+        EFFECTIVE_RADIUS * Math.sin(start)
+      );
+      sector.lineTo(
+        EFFECTIVE_RADIUS * Math.cos(end),
+        EFFECTIVE_RADIUS * Math.sin(end)
+      );
       sector.lineTo(0, 0);
       sector.endFill();
       this.overlayContainer.addChild(sector);
 
       const text = new PIXI.Text(number.toString(), {
-        fontSize: 14,
+        fontSize: 14 * (isMobile ? MOBILE_SCALE : 1),
         fill: "green",
         fontFamily: "Arial",
         fontWeight: "bold",
@@ -140,8 +153,8 @@ export default class RouletteWheel extends PIXI.Container {
       });
       text.anchor.set(0.5);
       text.position.set(
-        (RADIUS - 15) * Math.cos(mid),
-        (RADIUS - 15) * Math.sin(mid)
+        (EFFECTIVE_RADIUS - 15) * Math.cos(mid),
+        (EFFECTIVE_RADIUS - 15) * Math.sin(mid)
       );
       text.rotation = mid + Math.PI / 2;
       text.zIndex = 2;
@@ -151,7 +164,10 @@ export default class RouletteWheel extends PIXI.Container {
 
   private initBall() {
     this.ballGraphic.clear();
-    this.ballGraphic.beginFill(0xffffff).drawCircle(0, 0, 6).endFill();
+    this.ballGraphic
+      .beginFill(0xffffff)
+      .drawCircle(0, 0, 6 * (isMobile ? MOBILE_SCALE : 1))
+      .endFill();
     this.ballGraphic.zIndex = 12;
     this.wheelContainer.addChild(this.ballGraphic);
     this.setBallPosition(this.ballAngleRad, this.ballTrackRadius);
@@ -213,7 +229,7 @@ export default class RouletteWheel extends PIXI.Container {
   }
 
   public setBallMargin(pixelsFromEdge: number) {
-    this.ballTrackRadius = RADIUS - Math.max(0, pixelsFromEdge);
+    this.ballTrackRadius = EFFECTIVE_RADIUS - Math.max(0, pixelsFromEdge);
     this.setBallPosition(this.ballAngleRad, this.ballTrackRadius);
   }
 

@@ -19,7 +19,7 @@ export const blackSet = new Set([
   2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35,
 ]);
 
-export const INIT_BALANCE = 10000;
+export const INIT_BALANCE = 500000;
 
 export const neighborsStyle = `.nb-ctrl {
     display:inline-flex; align-items:center; gap:12px;

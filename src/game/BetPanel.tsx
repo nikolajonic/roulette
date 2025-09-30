@@ -975,7 +975,7 @@ export default class BetPanel extends React.Component<Props, State> {
         >
           <strong>Balance:</strong>{" "}
           <span style={{ fontSize: Math.max(12, Math.round(14 * SCALE)) }}>
-            {balance}
+            {balance} din
           </span>
         </div>
       </div>
