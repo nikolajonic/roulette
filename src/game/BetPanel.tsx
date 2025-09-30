@@ -2,6 +2,7 @@
 import React from "react";
 import type { Bet, BetType } from "./BetTypes";
 import { blackSet, redSet } from "../constants";
+import { isMobile } from "pixi.js";
 
 type Props = {
   initialBalance?: number;
@@ -20,9 +21,24 @@ type State = {
   lastBets: ChipEntry[];
 };
 
-const cellSize = 48;
-const GAP = 4;
+/** ========= Mobile-aware sizing ========= **/
+const BASE_CELL_SIZE = 48;
+const BASE_GAP = 4;
+const MOBILE_SCALE = 0.5;
 
+// Fallback detection if PIXI's isMobile.any isn't available in your setup
+const isMobileDevice =
+  !!isMobile?.any ||
+  (typeof navigator !== "undefined" &&
+    /Mobi|Android/i.test(navigator.userAgent));
+
+const SCALE = isMobileDevice ? MOBILE_SCALE : 1;
+
+const cellSize = Math.max(22, Math.round(BASE_CELL_SIZE * SCALE));
+const GAP = Math.max(2, Math.round(BASE_GAP * SCALE));
+const LABEL_EXTRA_W = Math.round(20 * SCALE);
+
+/** ========= Chip assets ========= **/
 const CHIP_SRC = {
   green: "assets/chips/chip_green.png",
   blue: "assets/chips/chip_blue.png",
@@ -37,6 +53,7 @@ const chipSrcForAmount = (amount: number) => {
   return CHIP_SRC.green;
 };
 
+/** ========= Helpers for outside bets ========= **/
 const numbersForLabel = (label: string): number[] => {
   switch (label) {
     case "1st 12":
@@ -99,6 +116,7 @@ const betTypeForLabel = (label: string): BetType | null => {
   }
 };
 
+/** ========= Board math ========= **/
 const colOf = (n: number) => Math.floor((n - 1) / 3);
 const rowOf = (n: number) => 3 - ((n - 1) % 3);
 const nAt = (col: number, row: number) => {
@@ -121,14 +139,13 @@ export default class BetPanel extends React.Component<Props, State> {
     };
   }
 
-  /** 👇 Call this from a parent via ref to highlight cells (e.g., from racetrack hover) */
+  /** Call via ref to highlight cells (e.g., racetrack hover) */
   public highlight = (nums: number[] | null) => {
     if (!nums?.length) {
       if (this.state.highlighted.size)
         this.setState({ highlighted: new Set() });
       return;
     }
-    // avoid useless renders
     const same =
       this.state.highlighted.size === nums.length &&
       nums.every((n) => this.state.highlighted.has(n));
@@ -160,8 +177,6 @@ export default class BetPanel extends React.Component<Props, State> {
         chips = nextChips;
         balance -= bet.amount;
         this.props.onBetPlaced?.(bet);
-      } else {
-        continue;
       }
     }
     this.setState({ chips, balance });
@@ -173,6 +188,7 @@ export default class BetPanel extends React.Component<Props, State> {
 
   getBalance = () => this.state.balance;
 
+  /** Unique key for merging chip stacks */
   private keyForBet(bet: Bet, label?: string) {
     if (bet.type === "straight" && bet.numbers.length === 1) {
       return `S:${bet.numbers[0]}`;
@@ -192,6 +208,7 @@ export default class BetPanel extends React.Component<Props, State> {
     return `${t}:${nums}`;
   }
 
+  /** Cell centers */
   private centerForCell(col: number, row: number) {
     const zeroColW = cellSize;
     const baseX = zeroColW + GAP;
@@ -206,6 +223,7 @@ export default class BetPanel extends React.Component<Props, State> {
     return { x, y };
   }
 
+  /** Ideal chip positions for merged bets (non-straight, non-label) */
   private posForBet(
     bet: Bet,
     label?: string
@@ -286,6 +304,7 @@ export default class BetPanel extends React.Component<Props, State> {
     return undefined;
   }
 
+  /** Merge/stack chips for same bet key */
   private addToChipMap(
     chips: State["chips"],
     placedBet: Bet,
@@ -338,7 +357,6 @@ export default class BetPanel extends React.Component<Props, State> {
     );
   };
 
-  // inside BetPanel class
   public placeManyFromOutside = (bets: Bet[]) => {
     if (!bets?.length) return;
     this.setState(
@@ -360,27 +378,28 @@ export default class BetPanel extends React.Component<Props, State> {
         return { chips, balance };
       },
       () => {
-        // fire callback for each placed bet
         bets.forEach((b) => this.props.onBetPlaced?.(b));
       }
     );
   };
 
+  /** ========= Styles ========= **/
   private numberCellStyle = (n: number): React.CSSProperties => {
     const isHi = this.state.highlighted.has(n);
     return {
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      borderRadius: 6,
+      borderRadius: Math.max(4, Math.round(6 * SCALE)),
       fontFamily: "Inter, system-ui, Arial, sans-serif",
       fontWeight: 600,
-      fontSize: 14,
+      fontSize: Math.max(10, Math.round(14 * SCALE)),
       color: "#fff",
       cursor: "pointer",
       background: n === 0 ? "#00aa00" : redSet.has(n) ? "#cc0000" : "#111",
-      boxShadow: isHi ? "0 0 0 2px #ffffff" : "none", // ← white border
+      boxShadow: isHi ? "0 0 0 2px #ffffff" : "none",
       transition: "box-shadow 120ms ease",
+      touchAction: "manipulation",
     };
   };
 
@@ -388,13 +407,14 @@ export default class BetPanel extends React.Component<Props, State> {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 6,
+    borderRadius: Math.max(4, Math.round(6 * SCALE)),
     fontFamily: "Inter, system-ui, Arial, sans-serif",
     fontWeight: 600,
-    fontSize: 14,
+    fontSize: Math.max(10, Math.round(14 * SCALE)),
     color: "#fff",
     cursor: "pointer",
     userSelect: "none",
+    touchAction: "manipulation",
   };
 
   private gridStyle: React.CSSProperties = {
@@ -402,11 +422,12 @@ export default class BetPanel extends React.Component<Props, State> {
     display: "grid",
     gap: GAP,
     gridTemplateColumns: `${cellSize}px repeat(12, ${cellSize}px) ${
-      cellSize + 20
+      cellSize + LABEL_EXTRA_W
     }px`,
     gridTemplateRows: `repeat(3, ${cellSize}px) ${cellSize}px ${cellSize}px`,
     userSelect: "none",
     width: (1 + 12 + 1) * (cellSize + GAP) - GAP,
+    maxWidth: "100%",
   };
 
   private numberCellGridPos = (n: number): React.CSSProperties => {
@@ -450,10 +471,11 @@ export default class BetPanel extends React.Component<Props, State> {
     this.tryPlace(bet, label);
   };
 
+  /** ========= Hotspots (scaled) ========= **/
   private renderSplitHotspots(amount: number) {
     const hs: React.ReactNode[] = [];
-    const w = 16;
-    const h = 24;
+    const w = Math.max(10, Math.round(cellSize * 0.33));
+    const h = Math.max(14, Math.round(cellSize * 0.5));
 
     for (let c = 0; c <= 10; c++) {
       for (let r = 1; r <= 3; r++) {
@@ -554,7 +576,7 @@ export default class BetPanel extends React.Component<Props, State> {
 
   private renderCornerHotspots(amount: number) {
     const hs: React.ReactNode[] = [];
-    const size = 18;
+    const size = Math.max(12, Math.round(cellSize * 0.375));
 
     for (let c = 0; c <= 10; c++) {
       for (let r = 1; r <= 2; r++) {
@@ -627,7 +649,7 @@ export default class BetPanel extends React.Component<Props, State> {
     const baseX = zeroColW + GAP;
     const edgeX = baseX - GAP / 2;
 
-    const size = 18;
+    const size = Math.max(12, Math.round(cellSize * 0.375));
 
     const p3 = this.centerForCell(0, 1);
     const p2 = this.centerForCell(0, 2);
@@ -673,8 +695,8 @@ export default class BetPanel extends React.Component<Props, State> {
     const y12 = (p1.y + p2.y) / 2;
     const y23 = (p2.y + p3.y) / 2;
 
-    const w = 24,
-      h = 18;
+    const w = Math.max(14, Math.round(cellSize * 0.5));
+    const h = Math.max(10, Math.round(cellSize * 0.33));
 
     const mk = (key: string, y: number, nums: number[]) => (
       <div
@@ -715,7 +737,7 @@ export default class BetPanel extends React.Component<Props, State> {
     const outside = ["1 to 18", "EVEN", "RED", "BLACK", "ODD", "19 to 36"];
 
     return (
-      <div className={className}>
+      <div className={className} style={{ touchAction: "manipulation" }}>
         <style>{`
   @keyframes chip-in {
     from { opacity: 0; transform: translateY(12px) scale(0.92); }
@@ -727,7 +749,9 @@ export default class BetPanel extends React.Component<Props, State> {
     100% { transform: scale(1); }
   }
 `}</style>
+
         <div style={this.gridStyle}>
+          {/* Zero cell */}
           <div
             style={{
               ...this.numberCellStyle(0),
@@ -743,6 +767,7 @@ export default class BetPanel extends React.Component<Props, State> {
             0
           </div>
 
+          {/* Numbers 1-36 */}
           {Array.from({ length: 36 }, (_, i) => i + 1).map((n) => (
             <div
               key={n}
@@ -760,6 +785,7 @@ export default class BetPanel extends React.Component<Props, State> {
             </div>
           ))}
 
+          {/* Columns */}
           {columnDefs.map(({ label, tag, row }) => (
             <div
               key={tag}
@@ -777,6 +803,7 @@ export default class BetPanel extends React.Component<Props, State> {
             </div>
           ))}
 
+          {/* Dozens */}
           {dozens.map((label, i) => (
             <div
               key={label}
@@ -794,6 +821,7 @@ export default class BetPanel extends React.Component<Props, State> {
             </div>
           ))}
 
+          {/* Outside */}
           {outside.map((label, i) => (
             <div
               key={label}
@@ -811,11 +839,13 @@ export default class BetPanel extends React.Component<Props, State> {
             </div>
           ))}
 
+          {/* Hotspots */}
           {this.renderSplitHotspots(amount)}
           {this.renderCornerHotspots(amount)}
           {this.renderZeroHotspots(amount)}
           {this.renderZeroTrioHotspots(amount)}
 
+          {/* Chips */}
           {Object.entries(chips).map(([key, entry]) => {
             const colorSrc = chipSrcForAmount(entry.bet.amount);
             const labelColor = colorSrc === CHIP_SRC.yellow ? "#111" : "#fff";
@@ -828,16 +858,17 @@ export default class BetPanel extends React.Component<Props, State> {
               return String(v);
             };
 
+            // Absolutely positioned chips (splits/streets/corners/zero combos)
             if (entry.pos) {
               return (
                 <div
-                  key={entry.bet.amount}
+                  key={key}
                   style={{
                     position: "absolute",
-                    left: entry.pos.x - Math.round(cellSize * 0.66) / 2,
-                    top: entry.pos.y - Math.round(cellSize * 0.66) / 2,
-                    width: Math.round(cellSize * 0.66),
-                    height: Math.round(cellSize * 0.66),
+                    left: entry.pos.x - chipSizePx / 2,
+                    top: entry.pos.y - chipSizePx / 2,
+                    width: chipSizePx,
+                    height: chipSizePx,
                     zIndex: 5,
                     pointerEvents: "none",
                     filter: "drop-shadow(0 6px 14px rgba(0,0,0,0.45))",
@@ -860,7 +891,7 @@ export default class BetPanel extends React.Component<Props, State> {
                       justifyContent: "center",
                       fontFamily: "Inter, system-ui, Arial, sans-serif",
                       fontWeight: 800,
-                      fontSize: Math.round(Math.round(cellSize * 0.66) * 0.28),
+                      fontSize: Math.max(9, Math.round(chipSizePx * 0.28)),
                       color: labelColor,
                       textShadow:
                         colorSrc === CHIP_SRC.yellow
@@ -874,6 +905,7 @@ export default class BetPanel extends React.Component<Props, State> {
               );
             }
 
+            // Grid-placed chips (single-number or label bets)
             let gridPos: React.CSSProperties;
             if (
               entry.bet.type === "straight" &&
@@ -897,8 +929,8 @@ export default class BetPanel extends React.Component<Props, State> {
                   justifySelf: "center",
                   position: "relative",
                   zIndex: 5,
-                  width: Math.round(cellSize * 0.66),
-                  height: Math.round(cellSize * 0.66),
+                  width: chipSizePx,
+                  height: chipSizePx,
                   pointerEvents: "none",
                   filter: "drop-shadow(0 6px 14px rgba(0,0,0,0.45))",
                   animation:
@@ -920,7 +952,7 @@ export default class BetPanel extends React.Component<Props, State> {
                     justifyContent: "center",
                     fontFamily: "Inter, system-ui, Arial, sans-serif",
                     fontWeight: 800,
-                    fontSize: Math.round(Math.round(cellSize * 0.66) * 0.28),
+                    fontSize: Math.max(9, Math.round(chipSizePx * 0.28)),
                     color: labelColor,
                     textShadow:
                       colorSrc === CHIP_SRC.yellow
@@ -935,8 +967,16 @@ export default class BetPanel extends React.Component<Props, State> {
           })}
         </div>
 
-        <div style={{ marginTop: 10 }}>
-          <strong>Balance:</strong> {balance}
+        <div
+          style={{
+            marginTop: Math.max(6, Math.round(10 * SCALE)),
+            marginLeft: isMobile ? 40 : 0,
+          }}
+        >
+          <strong>Balance:</strong>{" "}
+          <span style={{ fontSize: Math.max(12, Math.round(14 * SCALE)) }}>
+            {balance}
+          </span>
         </div>
       </div>
     );
